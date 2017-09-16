@@ -1,0 +1,157 @@
+package com.redpois0n.multimachine.ui;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.ImageIcon;
+import javax.swing.JPanel;
+
+import com.redpois0n.multimachine.Location;
+import com.redpois0n.multimachine.RemoteMonitor;
+import com.redpois0n.multimachine.listeners.MonitorListener;
+import com.redpois0n.multimachine.utils.IconUtils;
+import com.redpois0n.multimachine.utils.MonitorUtils;
+
+@SuppressWarnings("serial")
+public class PanelOldMonitors extends JPanel {
+	
+	private RemoteMonitor[] monitors;
+	private RemoteMonitor selected;
+	private List<MonitorListener> listeners = new ArrayList<MonitorListener>();
+	
+	private double scaleD = 0.05D;
+	private int scaleInt = 20;
+
+	public PanelOldMonitors(RemoteMonitor[] m) {
+		this.monitors = m;
+		
+		super.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				for (int i = 0; i < monitors.length; i++) {
+					RemoteMonitor monitor = monitors[i];
+					
+					Location lowest = MonitorUtils.getLowestLocations(monitors);
+
+					int cX = e.getX() * scaleInt;
+					int cY = e.getY() * scaleInt;
+					
+					int x = monitor.getX() + Math.abs(lowest.x);
+					int y = monitor.getY() + Math.abs(lowest.y);		
+										
+					boolean b = cX >= x + 100 && cY >= y + 100 && cX <= x + 100 + monitor.getWidth() && cY <= y + 100 + monitor.getHeight();
+										
+					if (b) {
+						selected = monitor;
+						repaint();
+						
+						for (MonitorListener listener : listeners) {
+							listener.onMonitorChange(monitor);
+						}
+						
+						break;
+					}
+				}
+			}
+		});
+	}
+	
+	public void addListener(MonitorListener listener) {
+		listeners.add(listener);
+	}
+	
+	public void removeListener(MonitorListener listener) {
+		listeners.remove(listener);
+	}
+	
+	@Override
+	public void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		
+		if (monitors == null) {
+			return;
+		}
+		
+		Graphics2D g2 = (Graphics2D) g;
+		
+		Location lowest = MonitorUtils.getLowestLocations(monitors);
+
+		g2.scale(scaleD, scaleD);
+		
+		int highestX = 0;
+		int highestY = 0;
+		
+		for (int i = 0; i < monitors.length; i++) {
+			RemoteMonitor monitor = monitors[i];
+			
+			int x = monitor.getX() + Math.abs(lowest.x);
+			int y = monitor.getY() + Math.abs(lowest.y);
+			
+			if (x + monitor.getWidth() > highestX) {
+				highestX = x + monitor.getWidth();
+			}
+			
+			if (y + monitor.getHeight() > highestY) {
+				highestY = y + monitor.getHeight();
+			}
+			
+			paintMonitor(monitor, g2, i + 1, x + 100, y + 100, monitor.getWidth(), monitor.getHeight());
+		}	
+		
+		Dimension d = new Dimension(highestX / scaleInt + 10, highestY / scaleInt + 10);
+		
+		g2.setColor(Color.gray);
+		g2.drawRect(1, 1, highestX + 200, highestY + 200);
+		
+		super.setPreferredSize(d);
+		//super.setSize(d);
+	}
+	
+	public void paintMonitor(RemoteMonitor monitor, Graphics2D g2, int number, int x, int y, int width, int height) {
+		g2.setColor(Color.gray);		
+		g2.drawRect(x, y, width, height);
+		
+		ImageIcon icon;
+		
+		if (monitor.getX() == 0 && monitor.getY() == 0 && selected != null && selected.equals(monitor)) {
+			icon = (ImageIcon) IconUtils.getIcon("monitor_main_selected");
+		} else if (monitor.getX() == 0 && monitor.getY() == 0) {
+			icon = (ImageIcon) IconUtils.getIcon("monitor_main");
+		} else if (selected != null && selected.equals(monitor)) {
+			icon = (ImageIcon) IconUtils.getIcon("monitor_selected");
+		} else {
+			icon = (ImageIcon) IconUtils.getIcon("monitor");
+		}
+		
+		g2.drawImage(icon.getImage(), x, y, width, height, null);
+				
+		g2.setColor(Color.white);
+		Font f = new Font("Arial", Font.BOLD, 480);
+		g2.setFont(f);
+		g2.drawString(number + "", x + (width / 2) - 100, y + (height / 2) + 150);
+	}
+
+	public double getScaleD() {
+		return scaleD;
+	}
+
+	public void setScaleD(double scaleD) {
+		this.scaleD = scaleD;
+	}
+
+	public int getScaleInt() {
+		return scaleInt;
+	}
+
+	public void setScaleInt(int scaleInt) {
+		this.scaleInt = scaleInt;
+	}
+
+}
